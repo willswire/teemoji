@@ -1,0 +1,7 @@
+[project]
+name = "Training"
+version = "0.1.0"
+description = "Training data for teemoji"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["openai>=1.60.1"]

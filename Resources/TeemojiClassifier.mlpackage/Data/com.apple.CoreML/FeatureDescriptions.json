@@ -1,0 +1,18 @@
+{
+  "Inputs" : {
+    "text" : {
+      "MLFeatureShortDescription" : "a single line of stdout"
+    }
+  },
+  "Outputs" : {
+    "label" : {
+      "MLFeatureShortDescription" : "an emoji"
+    }
+  },
+  "TrainingInputs" : {
+
+  },
+  "States" : {
+
+  }
+}
