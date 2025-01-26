@@ -14,7 +14,7 @@
 You can install `teemoji` via [Homebrew](https://brew.sh/):
 
 ```bash
-brew install willswire/teemoji
+brew install willswire/tap/teemoji
 ```
 
 ## Usage
