@@ -28,11 +28,11 @@ jobs:
         run: brew install just
 
       # Debug build for PRs or normal pushes to 'main'
-      - name: Build (Debug) for PR/Main
+      - name: Build & Test (Debug) for PR/Main
         if: >
           github.event_name == 'pull_request' ||
           (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/'))
-        run: just build debug
+        run: just test
 
       # Release build for Tag pushes
       - name: Build (Release) for Tag
