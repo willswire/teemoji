@@ -1,5 +1,7 @@
 # teemoji
 
+<img width="500" alt="teemoji in action!" src="https://github.com/user-attachments/assets/acdb7614-c3d3-4704-b6d2-e270f44ca67a" />
+
 **teemoji** is a command-line tool inspired by the classic [`tee`](https://en.wikipedia.org/wiki/Tee_(command)) utility. Unlike `tee`, `teemoji` leverages a Core ML model to predict and prepend an appropriate emoji to each incoming line of text, adding a touch of fun and context to your command-line workflows.
 
 ## Features
