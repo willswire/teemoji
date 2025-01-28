@@ -1,12 +1,6 @@
 import CoreML
 import Foundation
 
-#if os(Linux)
-    import Glibc
-#else
-    import Darwin
-#endif
-
 /// The main entry point for the Teemoji command-line tool.
 ///
 /// This `@main` struct orchestrates parsing command-line arguments, opening files in append or write modes,
@@ -27,14 +21,14 @@ struct Teemoji {
         let helpFlagIndex = arguments.firstIndex(where: { $0 == "-h" || $0 == "--help" })
 
         let append = (appendFlagIndex != nil)
-        if appendFlagIndex != nil {
-            arguments.remove(at: appendFlagIndex!)
+        if let index = appendFlagIndex {
+            arguments.remove(at: index)
         }
 
         // If -i is present, ignore SIGINT.
-        if ignoreSigIntIndex != nil {
+        if let index = ignoreSigIntIndex {
             signal(SIGINT, SIG_IGN)
-            arguments.remove(at: ignoreSigIntIndex!)
+            arguments.remove(at: index)
         }
 
         // If -h or --help is present, print usage and exit.
@@ -135,9 +129,6 @@ struct Teemoji {
         }
 
         // Since readLine() returns nil on EOF or error, we can’t distinguish. Just exit.
-        // In BFS tee, if read < 0, it calls err(1, "read"). But we can’t detect that.
-        // We'll trust readLine only ended due to EOF.
-
         exit(exitStatus)
     }
 
@@ -148,9 +139,9 @@ struct Teemoji {
 
             Reads from standard input, writes to standard output and specified files, prepending an emoji
             inferred by a Core ML model to each line. Options:
-              -a	Append to the given file(s), do not overwrite
-              -i	Ignore SIGINT
-              -h	Display help (non-standard extension)
+              -a\tAppend to the given file(s), do not overwrite
+              -i\tIgnore SIGINT
+              -h\tDisplay help (non-standard extension)
             """
         print(usage)
     }
