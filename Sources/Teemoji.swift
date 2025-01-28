@@ -1,20 +1,3 @@
-/**
- # Teemoji
-
- A command-line tool similar to the classic `tee` utility, but uses a Core ML model to predict an appropriate emoji to prepend each incoming line of text.
-
- **Usage**
- ```bash
- cat input.txt | teemoji [options] [FILE...]
- ```
-
- **Options**
- - `-a`, `--append`: Append to the given FILE(s), do not overwrite.
- - `-h`, `--help`: Display help information.
-
- This tool reads from standard input, writes to standard output, and can also write to one or more files.
- */
-
 import CoreML
 import Foundation
 
@@ -23,134 +6,158 @@ import Foundation
 /// This `@main` struct orchestrates parsing command-line arguments, opening files in append or write modes,
 /// loading the `TeemojiClassifier` model, reading lines from standard input, and writing them (with an emoji) to
 /// standard output and each specified file.
-
 @main
 struct Teemoji {
-    /**
-     The main function for the `Teemoji` CLI tool.
-
-     This function processes command-line arguments, manages file I/O, and uses the Core ML model to predict emojis for
-     each line read from standard input.
-
-     - Parameters:
-        - arguments: Typically includes the executable name and any flags / file paths.
-     - Returns: Does not return; the process runs until EOF on standard input.
-     */
     static func main() {
-        // Parse command-line arguments
+        // Keep track of exit status, default success.
+        var exitStatus: Int32 = 0
+        // Parse command-line arguments.
         var arguments = CommandLine.arguments
-        // The first argument is the executable name, so remove it.
-        arguments.removeFirst()
+        arguments.removeFirst()  // remove executable name
 
-        // Check if the user asked for help
-        if arguments.contains("-h") || arguments.contains("--help") {
+        // We support -a and -i, plus -h/--help.
+        let appendFlagIndex = arguments.firstIndex(where: { $0 == "-a" || $0 == "--append" })
+        let ignoreSigIntIndex = arguments.firstIndex(where: { $0 == "-i" })
+        let helpFlagIndex = arguments.firstIndex(where: { $0 == "-h" || $0 == "--help" })
+
+        let append = (appendFlagIndex != nil)
+        if let index = appendFlagIndex {
+            arguments.remove(at: index)
+        }
+
+        // If -i is present, ignore SIGINT.
+        if let index = ignoreSigIntIndex {
+            signal(SIGINT, SIG_IGN)
+            arguments.remove(at: index)
+        }
+
+        // If -h or --help is present, print usage and exit.
+        if helpFlagIndex != nil {
             printUsage()
             exit(EXIT_SUCCESS)
         }
 
-        // Check for append flag (-a / --append) and strip it out
-        let append = arguments.contains("-a") || arguments.contains("--append")
-        arguments.removeAll(where: { $0 == "-a" || $0 == "--append" })
-
-        // The remaining arguments are taken to be filenames (like `tee file1 file2 ...`)
+        // Remaining arguments are treated as file paths.
         let fileURLs = arguments.map { URL(fileURLWithPath: $0) }
 
-        // Open file handles for writing or appending
-        var fileHandles: [FileHandle] = []
+        // Open file handles.
+        var fileHandles: [(URL, FileHandle)] = []
         for url in fileURLs {
             do {
-                // If appending, open or create the file; otherwise create/truncate it.
                 if append {
-                    // Create the file if it doesn’t exist; otherwise open for appending.
+                    // Create file if it doesn’t exist, otherwise open for append.
                     if !FileManager.default.fileExists(atPath: url.path) {
                         FileManager.default.createFile(atPath: url.path, contents: nil)
                     }
                     let handle = try FileHandle(forWritingTo: url)
-                    // Move the write pointer to the end if appending
                     try handle.seekToEnd()
-                    fileHandles.append(handle)
+                    fileHandles.append((url, handle))
                 } else {
-                    // Overwrite by creating a new file (truncating existing contents)
+                    // Overwrite by creating a new file.
                     FileManager.default.createFile(atPath: url.path, contents: nil)
                     let handle = try FileHandle(forWritingTo: url)
-                    fileHandles.append(handle)
+                    fileHandles.append((url, handle))
                 }
             } catch {
                 fputs("teemoji: cannot open \(url.path): \(error)\n", stderr)
+                exitStatus = 1
             }
         }
 
-        // Make sure handles are closed at the end
+        // Ensure handles get closed.
         defer {
-            for handle in fileHandles {
+            for (_, handle) in fileHandles {
                 try? handle.close()
             }
         }
 
+        // Load the ML model.
         guard
             let modelURL = Bundle.module.url(
-                forResource: "TeemojiClassifier", withExtension: "mlmodelc")
+                forResource: "TeemojiClassifier", withExtension: "mlmodelc"),
+            let rawModel = try? MLModel(contentsOf: modelURL)
         else {
             fputs("teemoji: failed to load CoreML model.\n", stderr)
             exit(EXIT_FAILURE)
         }
-
-        guard let rawModel = try? MLModel(contentsOf: modelURL) else {
-            fputs("teemoji: failed to load CoreML model.\n", stderr)
-            exit(EXIT_FAILURE)
-        }
-
         let model = TeemojiClassifier(model: rawModel)
 
-        // Read lines from stdin, predict an emoji, write to stdout & files
+        // Read from stdin line by line, predict emoji, then write to stdout & all open files.
         while let line = readLine() {
-            // Attempt inference on the line
+            // Attempt model inference.
             let predictionLabel: String
             do {
                 let prediction = try model.prediction(text: line)
                 predictionLabel = prediction.label
             } catch {
-                // If model prediction fails for any reason, fall back to no emoji
+                // If model fails, use a fallback.
                 predictionLabel = "❓"
             }
 
+            // Prepare output line.
             let outputLine = "\(predictionLabel) \(line)\n"
+            // Always write to stdout.
+            if fputs(outputLine, stdout) < 0 {
+                // If an error occurs while writing to stdout, set exit code.
+                exitStatus = 1
+            }
 
-            // Always write to stdout
-            fputs(outputLine, stdout)
-
-            // Also write to each open file
+            // Also attempt to write to each file.
             if let data = outputLine.data(using: .utf8) {
-                for handle in fileHandles {
-                    do {
-                        try handle.write(contentsOf: data)
-                    } catch {
-                        fputs("teemoji: error writing to file: \(error)\n", stderr)
+                for (url, handle) in fileHandles {
+                    var offset = 0
+                    let length = data.count
+                    // Attempt partial-write logic to ensure all data is written.
+                    while offset < length {
+                        do {
+                            // We slice the data from the offset onward.
+                            let sliceSize = try handle.writeCompat(
+                                data: data, offset: offset, length: length - offset)
+                            if sliceSize <= 0 {
+                                // Zero or negative means we couldn't write.
+                                throw NSError(domain: "WriteError", code: 1, userInfo: nil)
+                            }
+                            offset += sliceSize
+                        } catch {
+                            fputs("teemoji: error writing to \(url.path): \(error)\n", stderr)
+                            exitStatus = 1
+                            break
+                        }
                     }
                 }
             }
         }
+
+        // Since readLine() returns nil on EOF or error, we can’t distinguish. Just exit.
+        exit(exitStatus)
+    }
+
+    /// Prints usage, matching FreeBSD tee’s style.
+    static func printUsage() {
+        let usage = """
+            usage: teemoji [-ai] [file ...]
+
+            Reads from standard input, writes to standard output and specified files, prepending an emoji
+            inferred by a Core ML model to each line. Options:
+              -a\tAppend to the given file(s), do not overwrite
+              -i\tIgnore SIGINT
+              -h\tDisplay help (non-standard extension)
+            """
+        print(usage)
     }
 }
 
-/// Prints usage information to stdout.
-///
-/// Call this function when `-h` or `--help` flags are detected, or whenever you want
-/// to remind users how to operate the tool.
-func printUsage() {
-    let usage = """
-        Usage: teemoji [options] [FILE...]
-
-        Like the standard 'tee' command, teemoji reads from standard input and writes to standard output
-        and the specified FILEs, but prepends an emoji to each line inferred by a Core ML model.
-
-        Options:
-          -a, --append   Append to the given FILE(s), do not overwrite.
-          -h, --help     Display this help message.
-
-        Examples:
-          cat input.txt | teemoji output.txt
-          cat input.txt | teemoji -a output.txt another.log
-        """
-    print(usage)
+// Extend FileHandle to do partial writes similar to POSIX.
+extension FileHandle {
+    /// Write a segment of `data` starting from `offset`, returning how many bytes were written.
+    fileprivate func writeCompat(data: Data, offset: Int, length: Int) throws -> Int {
+        // Slicing the data.
+        let subdata = data.subdata(in: offset..<(offset + length))
+        // On Apple platforms, `write` should typically write all data, but we mimic partial writes.
+        // We'll try writing all subdata at once. If it succeeds, it’s done.
+        // If it fails, we throw.
+        // This is a simplified approach: we assume full write or error.
+        self.write(subdata)
+        return subdata.count
+    }
 }
