@@ -42,7 +42,7 @@ jobs:
       # Create a tar.gz file with the two release assets
       - name: Create Release Tar.gz
         if: startsWith(github.ref, 'refs/tags/')
-        run: tar -czf teemoji.tar.gz -C .build/release teemoji teemoji_teemoji.bundle
+        run: tar -czf teemoji.tar.gz -C .build/apple/Products/Release teemoji teemoji_teemoji.bundle
 
       # Create GitHub Release and Upload Assets
       - name: Create GitHub Release
