@@ -15,7 +15,7 @@ let package = Package(
         .testTarget(
             name: "TeemojiTests",
             dependencies: ["teemoji"],
-            resources: [.copy("TeemojiClassifier.mlmodelc")]
+            resources: [.copy("../Sources/TeemojiClassifier.mlmodelc")]
         ),
     ]
 )
