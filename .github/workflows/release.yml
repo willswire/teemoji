@@ -22,6 +22,8 @@ jobs:
     steps:
       # Checkout the repository
       - uses: actions/checkout@v4
+        with:
+          lfs: "true"
 
       # Install 'just' using Homebrew
       - name: Install 'just' using Homebrew
