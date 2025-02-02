@@ -897,7 +897,7 @@
   },
   {
     "text": "network 192.168.0.0 mask 255.255.255.0 broadcast 192.168.0.255",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "ps -aux | grep python",
@@ -2721,7 +2721,7 @@
   },
   {
     "text": "Connected to localhost.",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "Name    Address   Hardware Address",
@@ -2981,7 +2981,7 @@
   },
   {
     "text": "[  OK  ] Started Network Manager Script Dispatcher Service.",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "diff file1.txt file2.txt",
@@ -4513,7 +4513,7 @@
   },
   {
     "text": "ifconfig eth0 192.168.1.5",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "echo \"Hello, $(whoami)\"",
@@ -9101,7 +9101,7 @@
   },
   {
     "text": "[   OK   ] Started Network Manager",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "time out",
@@ -10469,7 +10469,7 @@
   },
   {
     "text": "eth0      Link encap:Ethernet  HWaddr 00:1A:2B:3C:4D:5E",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "PING google.com (172.217.5.110) 56(84) bytes of data.",
@@ -18101,7 +18101,7 @@
   },
   {
     "text": "ifconfig\nen0: flags=8863<UP,BROADCAST> mtu 1500",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "Name Node Manager: running",
@@ -19653,7 +19653,7 @@
   },
   {
     "text": "br-lan    Link encap:Ethernet  HWaddr 00:21:63:11:47:40",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "-rw-r--r-- 1 user user 1234 Apr 13 08:29 report.pdf",
@@ -20581,7 +20581,7 @@
   },
   {
     "text": "Network interface name",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "Locale: en_US.UTF-8",
@@ -28597,7 +28597,7 @@
   },
   {
     "text": "1.1.1.1 google.com",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "linux-vdso.so.1 =>  (0x00007ffd8a9ee000)",
@@ -32421,7 +32421,7 @@
   },
   {
     "text": "192.168.1.1",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "total used free shared buff/cache available",
@@ -32573,7 +32573,7 @@
   },
   {
     "text": "sudo: unable to resolve host",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "Date: Mon, 25 Oct 2023 18:18:20 GMT",
@@ -33649,7 +33649,7 @@
   },
   {
     "text": "127.0.0.1 localhost",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "Filesystem Size Used Avail Use% Mounted on",
@@ -34917,7 +34917,7 @@
   },
   {
     "text": "Connection successful: Host test\n",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "+---+\n| O |\n|/|\\|\n| | |\n+---+\n",
@@ -34945,7 +34945,7 @@
   },
   {
     "text": "tcp        0      0 0.0.0.0:22            0.0.0.0:*               LISTEN\n",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "Cloning into 'repository'...\n",
@@ -35553,7 +35553,7 @@
   },
   {
     "text": "Successfully connected to remote server",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "256K   64K    48K    15  85.2%   application.log",
@@ -38777,7 +38777,7 @@
   },
   {
     "text": "List of interfaces",
-    "label": "🖧"
+    "label": "🛜"
   },
   {
     "text": "Broadcast message from user@example.com",
