@@ -1,0 +1,21 @@
+name: PR Title Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-title:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate PR Title
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          echo "PR Title: ${TITLE}"
+          # Adjust the regex as needed to match your conventional commit format.
+          if ! echo "${TITLE}" | grep -Eq "^(feat|fix|docs|style|refactor|perf|test|chore)(\([\w\-]+\))?: .+"; then
+            echo "Error: PR title does not match the conventional commit format."
+            exit 1
+          fi

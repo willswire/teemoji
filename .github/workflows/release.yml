@@ -1,54 +1,30 @@
 name: Release
 
 on:
-  # Run when pushing commits to 'main'
   push:
-    branches: ["main"]
-    # Also run on any tag push
     tags:
       - "*"
-  # Run on pull requests targeting 'main'
-  pull_request:
-    branches: ["main"]
-
-permissions:
-  contents: write
-  packages: write
 
 jobs:
-  build-and-release:
+  release:
     runs-on: macos-latest
 
     steps:
-      # Checkout the repository
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          lfs: "true"
+          lfs: true
 
-      # Install 'just' using Homebrew
-      - name: Install 'just' using Homebrew
+      - name: Install Just
         run: brew install just
 
-      # Debug build for PRs or normal pushes to 'main'
-      - name: Build & Test (Debug) for PR/Main
-        if: >
-          github.event_name == 'pull_request' ||
-          (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/'))
-        run: just test
-
-      # Release build for Tag pushes
-      - name: Build (Release) for Tag
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Build Release
         run: just build release
 
-      # Create a tar.gz file with the two release assets
-      - name: Create Release Tar.gz
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Package Release Assets
         run: tar -czf teemoji.tar.gz -C .build/apple/Products/Release teemoji teemoji_teemoji.bundle
 
-      # Create GitHub Release and Upload Assets
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           files: teemoji.tar.gz
