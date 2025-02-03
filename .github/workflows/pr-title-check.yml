@@ -2,20 +2,29 @@ name: PR Title Check
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
+    types: [milestoned, opened, edited, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
-  check-title:
+  run:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Validate PR Title
+      - name: Setup Node.js
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+
+      - name: Install commitlint
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
-          echo "PR Title: ${TITLE}"
-          # Adjust the regex as needed to match your conventional commit format.
-          if ! echo "${TITLE}" | grep -Eq "^(feat|fix|docs|style|refactor|perf|test|chore)(\([\w\-]+\))?: .+"; then
-            echo "Error: PR title does not match the conventional commit format."
-            exit 1
-          fi
+          npm install --save-dev @commitlint/config-conventional@19.6.0
+          npm install --save-dev @commitlint/cli@19.6.1
+
+      - name: Lint PR title
+        env:
+          pull_request_title: ${{ github.event.pull_request.title }}
+        run: |
+          echo "module.exports = {extends: ['@commitlint/config-conventional']}" > commitlint.config.js
+          # shellcheck disable=SC2154
+          echo "$pull_request_title" | npx commitlint
