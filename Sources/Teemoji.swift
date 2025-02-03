@@ -10,6 +10,7 @@ import Foundation
 struct Teemoji {
     struct ArgumentOptions {
         let append: Bool
+        let reverse: Bool
         let fileURLs: [URL]
         let shouldExit: Bool
     }
@@ -20,6 +21,7 @@ struct Teemoji {
 
         let appendFlagIndex = arguments.firstIndex(where: { $0 == "-a" || $0 == "--append" })
         let ignoreSigIntIndex = arguments.firstIndex(where: { $0 == "-i" })
+        let reverseEmojiIndex = arguments.firstIndex(where: { $0 == "-r" || $0 == "--reverse" })
         let helpFlagIndex = arguments.firstIndex(where: { $0 == "-h" || $0 == "--help" })
 
         let append = (appendFlagIndex != nil)
@@ -32,6 +34,11 @@ struct Teemoji {
             arguments.remove(at: index)
         }
 
+        let reverse = (reverseEmojiIndex != nil)
+        if let index = reverseEmojiIndex {
+            arguments.remove(at: index)
+        }
+
         if helpFlagIndex != nil {
             printUsage()
             exit(EXIT_SUCCESS)
@@ -39,6 +46,7 @@ struct Teemoji {
 
         return ArgumentOptions(
             append: append,
+            reverse: reverse,
             fileURLs: arguments.map { URL(fileURLWithPath: $0) },
             shouldExit: helpFlagIndex != nil
         )
@@ -135,7 +143,11 @@ struct Teemoji {
                 predictionLabel = "❓"
             }
 
-            let outputLine = "\(predictionLabel) \(line)\n"
+            var outputLine = "\(predictionLabel) \(line)\n"
+            if options.reverse {
+                outputLine = "\(line) \(predictionLabel)\n"
+            }
+
             if fputs(outputLine, stdout) < 0 {
                 exitStatus = 1
             }
@@ -150,12 +162,15 @@ struct Teemoji {
     /// Prints usage, matching FreeBSD tee's style.
     static func printUsage() {
         let usage = """
-            usage: teemoji [-ai] [file ...]
+            usage: teemoji [-air] [file ...]
 
-            Reads from standard input, writes to standard output and specified files, prepending an emoji
-            inferred by a Core ML model to each line. Options:
+            Reads from standard input, writes to standard output and specified files,
+            prepending an emoji inferred by a Core ML model to each line.
+            
+            Options:
               -a\tAppend to the given file(s), do not overwrite
               -i\tIgnore SIGINT
+              -r\tReverses where the emoji will be placed (at end of line)
               -h\tDisplay help (non-standard extension)
             """
         print(usage)
