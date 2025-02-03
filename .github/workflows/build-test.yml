@@ -1,0 +1,28 @@
+name: Build & Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-test:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install Packages
+        run: brew install just swiftlint
+
+      - name: Lint Code
+        run: just lint
+
+      - name: Run Tests (Debug Build)
+        run: just test

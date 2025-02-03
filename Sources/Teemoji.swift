@@ -8,14 +8,16 @@ import Foundation
 /// standard output and each specified file.
 @main
 struct Teemoji {
-    static func main() {
-        // Keep track of exit status, default success.
-        var exitStatus: Int32 = 0
-        // Parse command-line arguments.
-        var arguments = CommandLine.arguments
-        arguments.removeFirst()  // remove executable name
+    struct ArgumentOptions {
+        let append: Bool
+        let fileURLs: [URL]
+        let shouldExit: Bool
+    }
 
-        // We support -a and -i, plus -h/--help.
+    static func parseArguments() -> ArgumentOptions {
+        var arguments = CommandLine.arguments
+        arguments.removeFirst()
+
         let appendFlagIndex = arguments.firstIndex(where: { $0 == "-a" || $0 == "--append" })
         let ignoreSigIntIndex = arguments.firstIndex(where: { $0 == "-i" })
         let helpFlagIndex = arguments.firstIndex(where: { $0 == "-h" || $0 == "--help" })
@@ -25,27 +27,30 @@ struct Teemoji {
             arguments.remove(at: index)
         }
 
-        // If -i is present, ignore SIGINT.
         if let index = ignoreSigIntIndex {
             signal(SIGINT, SIG_IGN)
             arguments.remove(at: index)
         }
 
-        // If -h or --help is present, print usage and exit.
         if helpFlagIndex != nil {
             printUsage()
             exit(EXIT_SUCCESS)
         }
 
-        // Remaining arguments are treated as file paths.
-        let fileURLs = arguments.map { URL(fileURLWithPath: $0) }
+        return ArgumentOptions(
+            append: append,
+            fileURLs: arguments.map { URL(fileURLWithPath: $0) },
+            shouldExit: helpFlagIndex != nil
+        )
+    }
 
-        // Open file handles.
+    static func openFileHandles(urls: [URL], append: Bool) -> ([(URL, FileHandle)], Int32) {
         var fileHandles: [(URL, FileHandle)] = []
-        for url in fileURLs {
+        var exitStatus: Int32 = 0
+
+        for url in urls {
             do {
                 if append {
-                    // Create file if it doesn’t exist, otherwise open for append.
                     if !FileManager.default.fileExists(atPath: url.path) {
                         FileManager.default.createFile(atPath: url.path, contents: nil)
                     }
@@ -53,7 +58,6 @@ struct Teemoji {
                     try handle.seekToEnd()
                     fileHandles.append((url, handle))
                 } else {
-                    // Overwrite by creating a new file.
                     FileManager.default.createFile(atPath: url.path, contents: nil)
                     let handle = try FileHandle(forWritingTo: url)
                     fileHandles.append((url, handle))
@@ -63,76 +67,87 @@ struct Teemoji {
                 exitStatus = 1
             }
         }
+        return (fileHandles, exitStatus)
+    }
 
-        // Ensure handles get closed.
-        defer {
-            for (_, handle) in fileHandles {
-                try? handle.close()
-            }
-        }
-
-        // Load the ML model.
+    static func loadModel() -> TeemojiClassifier? {
         guard
             let modelURL = Bundle.module.url(
                 forResource: "TeemojiClassifier", withExtension: "mlmodelc"),
             let rawModel = try? MLModel(contentsOf: modelURL)
         else {
             fputs("teemoji: failed to load CoreML model.\n", stderr)
+            return nil
+        }
+        return TeemojiClassifier(model: rawModel)
+    }
+
+    static func writeToFiles(outputLine: String, fileHandles: [(URL, FileHandle)]) -> Int32 {
+        var exitStatus: Int32 = 0
+
+        if let data = outputLine.data(using: .utf8) {
+            for (url, handle) in fileHandles {
+                var offset = 0
+                let length = data.count
+                while offset < length {
+                    do {
+                        let sliceSize = try handle.writeCompat(
+                            data: data, offset: offset, length: length - offset)
+                        if sliceSize <= 0 {
+                            throw NSError(domain: "WriteError", code: 1, userInfo: nil)
+                        }
+                        offset += sliceSize
+                    } catch {
+                        fputs("teemoji: error writing to \(url.path): \(error)\n", stderr)
+                        exitStatus = 1
+                        break
+                    }
+                }
+            }
+        }
+        return exitStatus
+    }
+
+    static func main() {
+        let options = parseArguments()
+        if options.shouldExit { return }
+
+        let (fileHandles, initialExitStatus) = openFileHandles(
+            urls: options.fileURLs, append: options.append)
+        var exitStatus = initialExitStatus
+
+        defer {
+            for (_, handle) in fileHandles {
+                try? handle.close()
+            }
+        }
+
+        guard let model = loadModel() else {
             exit(EXIT_FAILURE)
         }
-        let model = TeemojiClassifier(model: rawModel)
 
-        // Read from stdin line by line, predict emoji, then write to stdout & all open files.
         while let line = readLine() {
-            // Attempt model inference.
             let predictionLabel: String
             do {
                 let prediction = try model.prediction(text: line)
                 predictionLabel = prediction.label
             } catch {
-                // If model fails, use a fallback.
                 predictionLabel = "❓"
             }
 
-            // Prepare output line.
             let outputLine = "\(predictionLabel) \(line)\n"
-            // Always write to stdout.
             if fputs(outputLine, stdout) < 0 {
-                // If an error occurs while writing to stdout, set exit code.
                 exitStatus = 1
             }
 
-            // Also attempt to write to each file.
-            if let data = outputLine.data(using: .utf8) {
-                for (url, handle) in fileHandles {
-                    var offset = 0
-                    let length = data.count
-                    // Attempt partial-write logic to ensure all data is written.
-                    while offset < length {
-                        do {
-                            // We slice the data from the offset onward.
-                            let sliceSize = try handle.writeCompat(
-                                data: data, offset: offset, length: length - offset)
-                            if sliceSize <= 0 {
-                                // Zero or negative means we couldn't write.
-                                throw NSError(domain: "WriteError", code: 1, userInfo: nil)
-                            }
-                            offset += sliceSize
-                        } catch {
-                            fputs("teemoji: error writing to \(url.path): \(error)\n", stderr)
-                            exitStatus = 1
-                            break
-                        }
-                    }
-                }
-            }
+            exitStatus = max(
+                exitStatus, writeToFiles(outputLine: outputLine, fileHandles: fileHandles))
         }
 
-        // Since readLine() returns nil on EOF or error, we can’t distinguish. Just exit.
         exit(exitStatus)
     }
 
-    /// Prints usage, matching FreeBSD tee’s style.
+    /// Prints usage, matching FreeBSD tee's style.
     static func printUsage() {
         let usage = """
             usage: teemoji [-ai] [file ...]
@@ -154,7 +169,7 @@ extension FileHandle {
         // Slicing the data.
         let subdata = data.subdata(in: offset..<(offset + length))
         // On Apple platforms, `write` should typically write all data, but we mimic partial writes.
-        // We'll try writing all subdata at once. If it succeeds, it’s done.
+        // We'll try writing all subdata at once. If it succeeds, it's done.
         // If it fails, we throw.
         // This is a simplified approach: we assume full write or error.
         self.write(subdata)

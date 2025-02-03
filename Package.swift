@@ -16,6 +16,6 @@ let package = Package(
             name: "TeemojiTests",
             dependencies: ["teemoji"],
             resources: [.copy("../Sources/TeemojiClassifier.mlmodelc")]
-        ),
+        )
     ]
 )
