@@ -86,6 +86,21 @@ final class TeemojiTests: XCTestCase {
         XCTAssertTrue(fileContent.contains("Appending Content"))
     }
 
+    func testReverseOption() throws {
+        let input = "Hello World"
+        let output = try runTeemoji(inputs: [input], arguments: ["-r"])
+
+        // Verify the output starts with the input text
+        XCTAssertTrue(
+            output.starts(with: input),
+            "With the reverse option enabled, the output should begin with the original input text.")
+
+        // Verify the output has changed
+        XCTAssertFalse(
+            output.starts(with: "\(input)\n"),
+            "Output should not end directly with the input, it should have an emoji suffix.")
+    }
+
     func testIgnoreSigInt() throws {
         // Simulate sending SIGINT using a process group or similar to make sure it's ignored
         // Note: This test requires specific setup and may not be fully feasible in some test environments
