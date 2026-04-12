@@ -29,7 +29,7 @@ jobs:
         run: tar -czf teemoji.tar.gz -C .build/apple/Products/Release teemoji teemoji_teemoji.bundle
 
       - name: Create GitHub Release and Upload Assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: teemoji.tar.gz
         env:
